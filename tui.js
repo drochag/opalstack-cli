@@ -5,7 +5,7 @@ const availableOptions = {
   'add email': interactiveAddEmail
 }
 
-export default async function tui (api) {
+export default async function tui () {
   const { action } = await enquirer.prompt({
     type: 'autocomplete',
     name: 'action',
@@ -13,5 +13,5 @@ export default async function tui (api) {
     choices: Object.keys(availableOptions)
   })
 
-  availableOptions[action](api)
+  availableOptions[action]()
 }

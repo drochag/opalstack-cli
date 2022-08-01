@@ -1,22 +1,14 @@
 import got from 'got'
 import chalk from 'chalk'
 import ansiEsc from 'ansi-escapes'
+import api from '../utils/api.js'
 
-const KEY = process.env.KEY
-
-export default async function createEmail(username, email, api) {
+export default async function createEmail(username, email) {
   console.log(ansiEsc.clearTerminal)
-  const instance = got.extend({
-    headers: {
-      'Authorization': `Token ${KEY}`
-    },
-    prefixUrl: api
-  })
-
-  const { imap_servers: servers } = await instance.get('server/list').json()
+  const { imap_servers: servers } = await api().get('server/list').json()
   const { id: uuid, hostname } = servers.find(server => server.hostname.includes('\.us\.'))
 
-  const [mailUser] = await instance.post('mailuser/create', {
+  const [mailUser] = await api().post('mailuser/create', {
     json: [{
       imap_server: uuid,
       name: username
@@ -32,13 +24,16 @@ export default async function createEmail(username, email, api) {
 
   while (state !== 'READY') {
     await new Promise(resolve => setTimeout(resolve, ++tries * 2000));
-    const tempMailUser = await instance.get(`mailuser/read/${mailUser.id}`).json()
+    const tempMailUser = await api().get(`mailuser/read/${mailUser.id}`).json()
     state = tempMailUser.state
   }
 
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  console.log(ansiEsc.eraseLines(2))
+  console.log(ansiEsc.cursorUp(2))
   console.log(chalk.green('✔ ') +  chalk.bold('Mailuser ready'))
 
-  await instance.post('address/create', {
+  await api().post('address/create', {
     json: [{
       source: email,
       destinations: [mailUser.id],
@@ -48,16 +43,17 @@ export default async function createEmail(username, email, api) {
 
   console.log(chalk.green('✔ ') +  chalk.bold('Created email ') + chalk.dim('· ') + chalk.cyan(email))
 
-  const logs = await instance.get('notice/list').json()
+  const logs = await api().get('notice/list').json()
   const currentLog = logs.find(item => item.content.includes(`${username}@${hostname}`))
 
-  await instance.post('notice/delete', {
+  await api().post('notice/delete', {
     json: [{ id: currentLog.id }]
   })
 
-  console.log(chalk.green('✔ ') +  chalk.bold('Removed password log'))
+  console.log(chalk.green('✔ ') +  chalk.bold('Removed password log\n'))
+  console.log(chalk.bold.bgGray.whiteBright('             INFO             \n'))
   console.log(chalk.green('+ ') +  chalk.bold('Username ') + chalk.dim('· ') + chalk.cyan(username))
   console.log(chalk.green('+ ') +  chalk.bold('Mail ') + chalk.dim('· ') + chalk.cyan(email))
   console.log(chalk.green('+ ') +  chalk.bold('Server ') + chalk.dim('· ') + chalk.cyan(hostname))
-  console.log(chalk.green('+ ') +  chalk.bold('Password ') + chalk.dim('· ') + chalk.cyan(mailUser.default_password))
+  console.log(chalk.green('+ ') +  chalk.bold('Password ') + chalk.dim('· ') + chalk.cyan(mailUser.default_password + '\n'))
 }

@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-
 import minimist from 'minimist'
 import commist from 'commist'
+
 import tui from './tui.js'
 import addEmail from './addEmail/cmd.js'
+import credentials from './utils/credentials.js'
 
-const OPALSTACK_API = 'https://my.opalstack.com/api/v1/'
+await credentials()
 
 const usage = () => {
   console.log('Opalstack CLI')
   console.log('add:')
-  console.log('  email: opalstack-cli add email <username> <email> --api=<string>')
   console.log('         opalstack-cli add email <username> <email>')
 }
 
@@ -28,11 +28,9 @@ if (noMatches) {
   const args = minimist(process.argv.slice(2), {
     boolean: ['help'],
     alias: {help: 'h' },
-    string: ['api'],
-    default: { 'api': OPALSTACK_API }
   })
 
-  const { help, api } = args
+  const { help } = args
 
   if (help) {
     usage()
@@ -40,7 +38,7 @@ if (noMatches) {
   }
 
   try {
-    await tui(api)
+    await tui()
   } catch (err) {
     const cancelled = err === ''
     if (cancelled === false) {

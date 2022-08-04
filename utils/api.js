@@ -6,8 +6,17 @@ dotenv.config({ path: credentialsFilePath })
 
 const opalstackAPI = 'https://my.opalstack.com/api/v1/'
 
-const opalstackInstance = (function () {
-  let instance = got.extend({
+const get = (path, options) => instance().get(path, options).json()
+const post = (path, options) => instance().post(path, options).json()
+
+export const getTokenList = () => get('token/list')
+export const deleteToken = key => post('token/delete', { json: [{ key }] })
+export const createToken = () => post('token/create', { json: [{ name: 'opalstack_cli' }] })
+export const login = credentials => post('login', { json: credentials })
+export const setApiOptions = options => instance(options)
+
+const instance = (function () {
+  let gotInstance = got.extend({
     prefixUrl: opalstackAPI,
     ...process.env.OPALSTACK_CLI_API_TOKEN && {
       headers: {
@@ -18,7 +27,7 @@ const opalstackInstance = (function () {
 
   return options => {
     if (options) {
-      instance = got.extend({
+      gotInstance = got.extend({
         prefixUrl: opalstackAPI,
         ...options,
         ...process.env.OPALSTACK_CLI_API_TOKEN && {
@@ -29,9 +38,9 @@ const opalstackInstance = (function () {
         },
       })
     }
-    console.log(instance)
-    return instance
+
+    return gotInstance
   }
 })()
 
-export default opalstackInstance
+export default instance

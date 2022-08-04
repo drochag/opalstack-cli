@@ -5,7 +5,7 @@ import dotenv from 'dotenv'
 import os from 'os'
 import { join } from 'path'
 import { constants as fsConstants, readFile, writeFile, mkdir } from 'fs'
-import api from './api.js'
+import { setApiOptions, createToken, deleteToken, getTokenList, login as loginApi } from './api.js'
 
 const homedir = os.homedir()
 const configDirPath = join(homedir, '.opalstack-cli');
@@ -58,13 +58,11 @@ const login = () => new Promise(async resolve => {
   const { username, password } = await enquirer.prompt(formQuestions)
 
   try {
-    const response = await api().post('login', {
-      json: { username, password }
-    }).json()
+    const response = await loginApi({ username, password })
 
     console.log(chalk.green('✔ ') +  chalk.bold('Logged in'))
 
-    api({
+    setApiOptions({
       headers: {
         'Authorization': `Token ${response.token}`
       }
@@ -74,21 +72,14 @@ const login = () => new Promise(async resolve => {
   } catch (err) {
     console.log(ansiEsc.eraseLines(3))
     console.log(ansiEsc.cursorUp(3))
+    console.log(err)
     console.log(chalk.red('✖ ') + chalk.bold('Invalid username or password, please try again.'))
 
     resolve(login())
   }
 })
 
-const getTokenList = () => api().get('token/list').json()
-
-const createToken = () => api().post('token/create', {
-  json: [{
-    name: 'opalstack_cli'
-  }]
-}).json()
-
-const shouldCreateChoicesEnum = {
+const shouldCreateEnum = {
   CREATE_ONE_AND_SAVE: 'Create one and save',
   LOG_IN_EVERY_TIME: 'Ask every time to log in',
 }
@@ -105,11 +96,11 @@ const saveInfo = async () => {
   const existingToken = tokenList.find(token => token.name === 'opalstack_cli')
 
   const shouldCreateChoices = {
-    [shouldCreateChoicesEnum.CREATE_ONE_AND_SAVE]: async () => {
+    [shouldCreateEnum.CREATE_ONE_AND_SAVE]: async () => {
       const createdTokens = await createToken()
       const { key: newToken } = createdTokens.pop()
 
-      api({
+      setApiOptions({
         headers: {
           'Authorization': `Token ${newToken}`
         }
@@ -118,14 +109,14 @@ const saveInfo = async () => {
       credentials({ OPALSTACK_CLI_API_TOKEN: newToken, OPALSTACK_CLI_ASK_FOR_LOGIN: false })
       console.log(chalk.green('✔ ') + chalk.bold('Saved token. '))
     },
-    [shouldCreateChoicesEnum.LOG_IN_EVERY_TIME]: () => {
+    [shouldCreateEnum.LOG_IN_EVERY_TIME]: () => {
       credentials({ OPALSTACK_CLI_ASK_FOR_LOGIN: true })
     }
   }
 
   const existingTokenChoices = {
     [existingTokenEnum.USE_TOKEN]: () => {
-      api({
+      setApiOptions({
         headers: {
           'Authorization': `Token ${existingToken.key}`
         }
@@ -133,16 +124,12 @@ const saveInfo = async () => {
 
       credentials({ OPALSTACK_CLI_API_TOKEN: existingToken.key, OPALSTACK_CLI_ASK_FOR_LOGIN: false })
     },
-    [existingTokenEnum.NEW_TOKEN_DELETE_EXISTING]: () => {
-      api().post('token/delete', {
-        json: [{
-          key: existingToken.key
-        }]
-      }).json()
+    [existingTokenEnum.NEW_TOKEN_DELETE_EXISTING]: async () => {
+      await deleteToken(existingToken.key)
 
-      shouldCreateChoices[shouldCreateChoicesEnum.CREATE_ONE_AND_SAVE]()
+      shouldCreateChoices[shouldCreateEnum.CREATE_ONE_AND_SAVE]()
     },
-    [existingTokenEnum.NEW_TOKEN_KEEP_EXISTING]: () => shouldCreateChoices[shouldCreateChoicesEnum.CREATE_ONE_AND_SAVE](),
+    [existingTokenEnum.NEW_TOKEN_KEEP_EXISTING]: () => shouldCreateChoices[shouldCreateEnum.CREATE_ONE_AND_SAVE](),
     [existingTokenEnum.LOG_IN_EVERY_TIME]: () => {
       credentials({ OPALSTACK_CLI_ASK_FOR_LOGIN: true })
     }

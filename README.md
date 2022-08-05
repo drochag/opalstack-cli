@@ -25,14 +25,12 @@ Receive information about your operation
 
 ## Usage
 
-<p align="center">
-  <video src="./img/Opalrecording.mp4" alt="Opalstack CLI demo" width="629">
-</p>
+https://user-images.githubusercontent.com/1919322/183150911-b29f2258-2783-4d89-a5fe-15fd032f8536.mp4
 
 Install
 
 ```bash
-$ npm install opalstack-cli
+$ npm install -g opalstack-cli
 ```
 
 you will be asked to log in if you haven't already done it, otherwise it'll take credentials from your credentials file locally

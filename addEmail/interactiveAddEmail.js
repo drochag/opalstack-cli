@@ -19,6 +19,7 @@ export default async function interactiveAddEmail () {
     const add = await form.run()
     createEmail(add.username, add.email)
   } catch (err) {
-    throw err
+    console.log('error creating email')
+    console.log(err)
   }
 }

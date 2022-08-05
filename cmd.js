@@ -42,7 +42,6 @@ if (noMatches) {
   } catch (err) {
     const cancelled = err === ''
     if (cancelled === false) {
-      console.log(err.message)
       process.exit(1)
     }
   }

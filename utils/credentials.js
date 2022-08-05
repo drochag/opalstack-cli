@@ -72,7 +72,6 @@ const login = () => new Promise(async resolve => {
   } catch (err) {
     console.log(ansiEsc.eraseLines(3))
     console.log(ansiEsc.cursorUp(3))
-    console.log(err)
     console.log(chalk.red('✖ ') + chalk.bold('Invalid username or password, please try again.'))
 
     resolve(login())
@@ -106,32 +105,38 @@ const saveInfo = async () => {
         }
       })
 
-      credentials({ OPALSTACK_CLI_API_TOKEN: newToken, OPALSTACK_CLI_ASK_FOR_LOGIN: false })
+      await credentials({ OPALSTACK_CLI_API_TOKEN: newToken, OPALSTACK_CLI_ASK_FOR_LOGIN: false })
       console.log(chalk.green('✔ ') + chalk.bold('Saved token. '))
     },
-    [shouldCreateEnum.LOG_IN_EVERY_TIME]: () => {
-      credentials({ OPALSTACK_CLI_ASK_FOR_LOGIN: true })
+    [shouldCreateEnum.LOG_IN_EVERY_TIME]: async () => {
+      await credentials({ OPALSTACK_CLI_ASK_FOR_LOGIN: true })
     }
   }
 
   const existingTokenChoices = {
-    [existingTokenEnum.USE_TOKEN]: () => {
+    [existingTokenEnum.USE_TOKEN]: async () => {
       setApiOptions({
         headers: {
           'Authorization': `Token ${existingToken.key}`
         }
       })
 
-      credentials({ OPALSTACK_CLI_API_TOKEN: existingToken.key, OPALSTACK_CLI_ASK_FOR_LOGIN: false })
+      await credentials({ OPALSTACK_CLI_API_TOKEN: existingToken.key, OPALSTACK_CLI_ASK_FOR_LOGIN: false })
     },
     [existingTokenEnum.NEW_TOKEN_DELETE_EXISTING]: async () => {
-      await deleteToken(existingToken.key)
+      console.log('Deleting existing token...')
+      try {
+        await shouldCreateChoices[shouldCreateEnum.CREATE_ONE_AND_SAVE]()
+        await deleteToken(existingToken.key)
+      } catch (err) {
+        console.log('Error deleting token')
+        console.log(err)
+      }
 
-      shouldCreateChoices[shouldCreateEnum.CREATE_ONE_AND_SAVE]()
     },
     [existingTokenEnum.NEW_TOKEN_KEEP_EXISTING]: () => shouldCreateChoices[shouldCreateEnum.CREATE_ONE_AND_SAVE](),
-    [existingTokenEnum.LOG_IN_EVERY_TIME]: () => {
-      credentials({ OPALSTACK_CLI_ASK_FOR_LOGIN: true })
+    [existingTokenEnum.LOG_IN_EVERY_TIME]: async () => {
+      await credentials({ OPALSTACK_CLI_ASK_FOR_LOGIN: true })
     }
   }
 
@@ -144,7 +149,13 @@ const saveInfo = async () => {
     })
 
     const selectedOption = await options.run()
-    return shouldCreateChoices[selectedOption]()
+
+    try {
+      await shouldCreateChoices[selectedOption]()
+    } catch (err) {
+      console.log('Error on ', selectedOption)
+      console.log(err)
+    }
   }
 
   const option = new enquirer.Select({
@@ -153,7 +164,12 @@ const saveInfo = async () => {
   })
 
   const selectedOption =  await option.run()
-  existingTokenChoices[selectedOption]()
+  try {
+    await existingTokenChoices[selectedOption]()
+  } catch (err) {
+    console.log('Error on ', selectedOption)
+    console.log(err)
+  }
 }
 
 const credentials = obj => new Promise((resolve, reject) => {
